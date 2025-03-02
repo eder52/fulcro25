@@ -1,0 +1,238 @@
+(ns app.ui.towerdefenseJUSTBACKUP!!!
+  (:require
+    [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
+    [com.fulcrologic.fulcro.dom :as dom]
+   [com.fulcrologic.fulcro.mutations :as m :refer [defmutation]]
+    [com.fulcrologic.fulcro-css.css :as css] 
+    [app.ui.game-cp :as game]
+   
+   
+   ))
+
+(defn grid-area [px py aw ah size]
+  (dom/rect {:x (str (* px size)) :y (str (* size py)) :rx "5px" :ry "5px" :width (str (* size aw)) :height (str (* size ah)) :fill "rgba(250,250,250, 0.2)" :stroke "white" :strokeWidth "2px"})
+       )
+
+
+(defn grid-unit2 [px py k size]
+  (let [selected (= k :selected)
+        selected false] ;;; DEACTICATED
+    (dom/rect {;:onClick (fn []  (js/alert (str px " " py)))
+               :x (str (+ 1 (* px size))) :y (str (+ 1 (* size py))) :rx "2px" :ry "2px" :width (str (- size 2)) :height (str (- size 2)) 
+               :fill "rgb(250,250,250)" :stroke "black" :strokeWidth "1px"
+               :fillOpacity (if selected "20%" "0%")})
+  )     
+  )
+(defn grid-unit [px py k size]
+  (let [invisible (= k :empty)
+        color (if invisible "white" (str (symbol k)))
+        ]
+    (dom/rect {;:onClick (fn []  (js/alert (str px " " py)))
+                           
+               
+               :x (str (* px size)) :y (str (* size py)) :rx "2px" :ry "2px" :width (str size) :height (str size) 
+               :fill color :stroke "none" :strokeWidth "1px"
+               :fillOpacity (if invisible "0%" "40%")})
+  )     
+  )
+
+
+
+
+
+
+
+
+
+
+#_(swap! state* assoc :polling-id (polling-request handler timeout))
+;; This will store the id of the interval in state*
+;; then on `:component-will-unmount` you can/should clear that with 
+#_(js/clearInterval (:polling-id @state*))
+#_(js/setInterval handler 500)
+
+#_(reset! timeratom (js/setInterval (fn [] (swap! temp-pos inc)) 500))
+#_(if @timeratom (js/clearInterval @timeratom))
+#_(def timeratom (atom nil))
+
+
+
+
+
+
+
+
+(let [timeratom (atom nil)]
+ (defsc TowerDefenseRenderer [this {:tower-render/keys [id unit enemies action game-state] :as props}] 
+  {:query [:tower-render/id :tower-render/unit :tower-render/enemies :tower-render/action 
+           {:tower-render/game-state (comp/get-query game/GameCP)}]
+   :ident :tower-render/id 
+   :initial-state {:tower-render/id :param/id
+                   :tower-render/unit :param/unit
+                   ;:tower-render/sx :param/sx
+                   ;:tower-render/sy :param/sy
+                   
+                   :tower-render/game-state {:id 1}
+                   ;;;:tower/ui {:id 1 :tower-id 1 :inventory {:moneeeey 15}};{:id :param/id :tower-id :param/id}
+                   :tower-render/enemies {1 {:id 1 :pos 0 :cell-changed false :sp 0.1 :lane 1 :size 1.2 :hp 5}
+                                   2 {:id 2 :pos 0 :cell-changed false :sp 0.16 :lane 2 :size 0.8 :hp 5}}
+                   :tower-render/action :nothing
+                   }}
+  ;[this {:keys [w h]}]
+  (let [sx (get-in game-state [:game-cp/td1 :tower/size-x])
+        sy (get-in game-state [:game-cp/td1 :tower/size-y])
+
+        parent-div (js/document.getElementById "container-for-tower-defense")
+        y-start (.-offsetTop parent-div)
+        x-start (.-offsetLeft parent-div)
+        _ (js/console.log (str (.-offsetLeft parent-div)))
+    
+        window-width (.-clientWidth js/document.body)
+        good-x-start (/ (- window-width (* unit sx)) 2)
+        convert-eX-to-cellX (fn [x] (int (/ (- x good-x-start) unit)))
+        convert-eY-to-cellY (fn [y] (int (- (/ y unit) 4)))
+        grid (get-in game-state [:game-cp/td1 :tower/grid])
+
+        
+        ]
+        
+    
+    (dom/div {:style {:position "fixed" 
+                      :left (str good-x-start "px") ;(str (* 2 unit) "px") 
+                      :top (str (* 4 unit) "px")}}
+     (dom/svg #js {:width (* unit sx) :height (* unit sy)}
+
+       ;grid     
+             (if (not (= action :nothing))
+               (for [x (range sx)
+                   y (range sy)]
+               (grid-unit2 x y  (get-in grid [y x]) 
+                          unit)))
+       ;draw towers       
+              (for [x (range sx)
+                   y (range sy)]
+               (grid-unit x y  (get-in grid [y x]) 
+                          unit))
+
+       ;base  -- TODO: DYNAMIC POSITIONING!!!
+             (grid-area 13 6 2 2 unit)
+              
+
+        ;enemy-list
+        (dom/text {:x "600" :y "80" :fill "white"} (str  "tiny fishy: " (:tiny-fishy (:tower/wave (:game-cp/td1 game-state))))) 
+        
+
+        ;enemies -- TODO:  FIX LANES!!! (also in mutations)
+              (for [enemykey (keys enemies)]
+               (let [enemy (get enemies enemykey)]
+                (if (pos? (get enemy :hp 1)) (dom/circle {:cx (str (* unit (- sx (:pos enemy) #_(* 0.2 @temp-pos)))) :cy (str (* unit (+ 5.5 (get enemy :lane)))) :r (str (* 15 (get enemy :size) (get enemy :hp 1) 0.4) )  :fill "rgb(180,255,180)"})
+                ) ) 
+                )
+              
+
+        ;whole interactable area (overlay)
+              ;;; -- TODO: ZOOM ISSUES !!!!!!
+             (dom/rect #js {:onClick (fn [e] (if (= action :nothing) nil (do (comp/transact! this `[(change-cell ~{:tower/id id :xpos (convert-eX-to-cellX (.-clientX e)) :ypos (convert-eY-to-cellY (.-clientY e)) :new-entry action})])
+                                                                             (comp/transact! this `[(change-action ~{:tower-render/id id :new-action :nothing})]))))
+                            :width (* unit sx) :height (* unit sy) :style #js {:fill        "rgba(200,200,200, 0.05)"
+                                                                               ;:strokeWidth 2
+                                                                               :stroke      "none"}})
+              
+         ;((playbutton))
+              (dom/rect #js {:onClick (fn [] ;(comp/transact! this `[(move-enemies ~{:tower/id id})])
+                                        (if @timeratom (do (js/clearInterval @timeratom) (reset! timeratom false))
+                                                 (reset! timeratom (js/setInterval (fn [] (comp/transact! this `[(move-enemies ~{:tower-render/id id :tower-render/grid grid :tower-render/sx sx})
+                                                                                                                 ;(collect-xp ~{:game-id id :amount 10})
+                                                                                                                 (game/gain-pet-xp ~{:game-id id :amount 10})])) 
+                                                                                   300))
+                                                 ) 
+                                               )
+                            :x (* unit (- sx 3 )) :y (* unit (- sy 2 ))
+                            :width (* unit 2) :height (* unit 1) :style #js {:fill        "rgba(200,200,200, 0.3)"
+                                                                               :strokeWidth 2
+                                                                               :stroke      "black"}})
+              
+          ;((enemy infolabel))
+             #_(dom/text {:x "20" :y "400" :fill "white"} (apply str
+                (for [enemykey (keys enemies)]
+                  
+                  (let [enemy (get enemies enemykey)]
+                    (str (:id enemy) ": " (- sx (:pos enemy)) ". cell-label: " 
+                         (get-in grid [(+ 5 (:lane enemy)) (int (- sx (:pos enemy)))]) ". " (if (:cell-changed enemy) "CHANGED!!") "  -  ")))))
+              #_(dom/text {:x "20" :y "430" :fill "white"} (str
+                (map #(- sx (:pos (get enemies %))) (keys enemies))))
+              
+             
+     
+
+              
+
+
+     )
+    
+
+    )
+  
+  
+  
+  )))
+
+(def ui-towergame (comp/factory TowerDefenseRenderer))
+
+
+
+
+
+
+
+
+
+
+
+(defmutation collect-xp [{:keys [game-id amount]}]
+  (action [{:keys [state]}]
+          (swap! state update-in [:game-cp/id game-id :game-cp/pet :xp] #(+ % amount)))
+  )
+
+
+(defmutation change-cell [{:tower/keys [id] :keys [xpos ypos new-entry]}]
+  (action [{:keys [state]}]
+          (swap! state update-in [:tower/id id :tower/grid] #(assoc-in % [ypos xpos] new-entry)))
+  )
+
+(defmutation change-action [{:tower-render/keys [id ] :keys [new-action]}]
+  (action [{:keys [state]}] 
+          (swap! state assoc-in [:tower-render/id id :tower-render/action] new-action))
+  )
+
+(defmutation move-enemies [{:tower-render/keys [id sx grid]}]
+  (action [{:keys [state]}]
+          (swap! state update-in [:tower-render/id id :tower-render/enemies] 
+                 (fn [s]
+                   (apply merge
+                          (for [x (keys s)]
+                            (let [before (get s x)]
+                              (if (get before :dead false) {x before}
+                                  (let [old-position (:pos before)
+                                        new-position (+ old-position (get before :sp 1))
+                                        after-move (assoc before :pos new-position)
+                                        cell-changed? (not (= (int new-position) (int old-position)))
+                                        after-cell-flag (assoc after-move :cell-changed cell-changed?)
+                         ;;; VERY NOT GOOD!!!!! figure out how to track location!!
+                                        grid-position [(+ 5 (:lane after-move)) (- sx (int new-position) 1)]
+                                        check-position (get-in grid grid-position)
+                                        received-damage (if cell-changed? (case check-position :red 2 :green 1 :blue 1 0)
+                                                            0)
+                                        new-hp (max 0 (- (:hp before) received-damage))
+                                        after-damage (assoc after-cell-flag :hp new-hp)
+                                        after-death-check (if (< new-hp 1)
+                                                            (do (js/console.log (str x " is dead. + 1XP"))
+                                                                (assoc after-damage :dead true)
+                                                                )
+                                                            after-damage)
+                                        ]
+                                    {x after-death-check})))))
+                   )))
+  )
+
+
